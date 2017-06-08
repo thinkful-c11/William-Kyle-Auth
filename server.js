@@ -41,8 +41,8 @@ app.get('/posts/:id', (req, res) => {
     });
 });
 
-app.post('/posts', (req, res) => {
-  const requiredFields = ['title', 'content', 'author'];
+app.post('/posts', passport.authenticate('basic',{session:false}), (req, res) => {
+  const requiredFields = ['title', 'content'];
   for (let i=0; i<requiredFields.length; i++) {
     const field = requiredFields[i];
     if (!(field in req.body)) {
@@ -56,7 +56,10 @@ app.post('/posts', (req, res) => {
     .create({
       title: req.body.title,
       content: req.body.content,
-      author: req.body.author
+      author: {
+        firstName:req.user.firstName,
+        lastName: req.user.lastName
+      }
     })
     .then(blogPost => res.status(201).json(blogPost.apiRepr()))
     .catch(err => {
@@ -67,7 +70,7 @@ app.post('/posts', (req, res) => {
 });
 
 
-app.delete('/posts/:id', (req, res) => {
+app.delete('/posts/:id', passport.authenticate('basic',{session:false}), (req, res) => {
   BlogPost
     .findByIdAndRemove(req.params.id)
     .exec()
@@ -81,7 +84,7 @@ app.delete('/posts/:id', (req, res) => {
 });
 
 
-app.put('/posts/:id', (req, res) => {
+app.put('/posts/:id', passport.authenticate('basic',{session:false}), (req, res) => {
   if (!(req.params.id && req.body.id && req.params.id === req.body.id)) {
     res.status(400).json({
       error: 'Request path id and request body id values must match'
@@ -89,12 +92,15 @@ app.put('/posts/:id', (req, res) => {
   }
 
   const updated = {};
-  const updateableFields = ['title', 'content', 'author'];
+  const updateableFields = ['title', 'content'];
   updateableFields.forEach(field => {
     if (field in req.body) {
       updated[field] = req.body[field];
     }
   });
+  updated.author={};
+  updated.author.firstName = req.user.firstName;
+  updated.author.lastName = req.user.lastName;
 
   BlogPost
     .findByIdAndUpdate(req.params.id, {$set: updated}, {new: true})
@@ -175,7 +181,6 @@ const basicStrategy = new BasicStrategy(function(username,password,callback){
     if(!result){
       return callback(null,false,{message:'Incorrect username or password'});
     }
-    console.log('result',result);
     user = result;
     return user.validatePassword(password);
   })
