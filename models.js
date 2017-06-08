@@ -1,5 +1,6 @@
+'use strict';
 const mongoose = require('mongoose');
-
+const bcrypt = require('bcryptjs');
 const blogPostSchema = mongoose.Schema({
   author: {
     firstName: String,
@@ -27,4 +28,39 @@ blogPostSchema.methods.apiRepr = function() {
 
 const BlogPost = mongoose.model('BlogPost', blogPostSchema);
 
-module.exports = {BlogPost};
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////              USER SCHEMA                  ////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const userSchema =mongoose.Schema({
+  username: {type:String, required:true, unique:true},
+  password: {type:String, required:true},
+  firstName: String,
+  lastName: String
+}); 
+
+userSchema.virtual('fullName').get(()=>{
+  return `${this.firstName} ${this.lastName}`.trim();
+})
+.set(()=>{
+  const [first, last] = this.fullName.split(' ');
+  this.firstName = first;
+  this.lastName = last;
+});
+
+userSchema.methods.apiRepr = function(){
+  return {
+    username: this.username,
+    fullName: this.fullName
+  };
+};
+
+userSchema.methods.hashPassword = function(password){
+  return bcrypt.hash(password,10);
+};
+
+userSchema.methods.validatePassword = function(password){
+  return bcrypt.compare(password, this.password);
+};
+const User = mongoose.model('User',userSchema);
+module.exports = {BlogPost,User};
