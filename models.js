@@ -39,14 +39,14 @@ const userSchema =mongoose.Schema({
   lastName: String
 }); 
 
-userSchema.virtual('fullName').get(()=>{
+userSchema.virtual('fullName').get(function(){
   return `${this.firstName} ${this.lastName}`.trim();
-})
-.set(()=>{
-  const [first, last] = this.fullName.split(' ');
-  this.firstName = first;
-  this.lastName = last;
 });
+// .set(()=>{
+//   const [first, last] = this.fullName.split(' ');
+//   this.firstName = first;
+//   this.lastName = last;
+// });
 
 userSchema.methods.apiRepr = function(){
   return {
@@ -55,7 +55,7 @@ userSchema.methods.apiRepr = function(){
   };
 };
 
-userSchema.methods.hashPassword = function(password){
+userSchema.statics.hashPassword = function(password){
   return bcrypt.hash(password,10);
 };
 

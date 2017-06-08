@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const morgan = require('morgan');
 
 const {DATABASE_URL, PORT} = require('./config');
-const {BlogPost} = require('./models');
+const {BlogPost, User} = require('./models');
 
 const app = express();
 
@@ -109,6 +109,56 @@ app.delete('/:id', (req, res) => {
       console.log(`Deleted blog post with id \`${req.params.ID}\``);
       res.status(204).end();
     });
+});
+
+app.post('/users', (req, res) => {
+  const requiredFields= ['username','password'];
+  if(!req.body){
+    return res.status(400).json({message: 'No Request Body'});
+  }
+
+  requiredFields.forEach(required=>{
+    if(!(required in req.body)){
+      return res.status(400).json({message: `Missing required field: ${required}`});
+    }
+    
+  });
+
+  let {username, password, firstName, lastName} = req.body;
+  username = username.trim();
+  password = password.trim();
+
+  if(username === ''){
+    return res.status(400).json({message: 'Empty username??!???!????'});
+  }
+
+  if(password === ''){
+    return res.status(400).json({message: 'Empty password??!???!????'});
+  }
+
+  return User
+    .find({username: username})
+    .count()
+    .exec()
+    .then(count=>{
+      if(count > 0){
+        return res.status(400).json({message: 'username already taken, sorry :('});
+      }
+      return User.hashPassword(password);
+    })
+    .then(hashedPass=>{
+      console.log(firstName);
+      console.log(lastName);
+      return User.create({
+        username, password: hashedPass, firstName, lastName
+      });
+    })
+    .then(user=>{
+      console.log(user.firstName);
+      console.log(user.lastName);
+      return res.status(201).json(user.apiRepr());
+    });
+
 });
 
 
