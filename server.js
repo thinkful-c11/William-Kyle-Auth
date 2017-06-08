@@ -1,7 +1,10 @@
+'use strict';
 const bodyParser = require('body-parser');
 const express = require('express');
 const mongoose = require('mongoose');
 const morgan = require('morgan');
+const passport = require('passport');
+const {BasicStrategy} = require('passport-http');
 
 const {DATABASE_URL, PORT} = require('./config');
 const {BlogPost, User} = require('./models');
@@ -102,7 +105,7 @@ app.put('/posts/:id', (req, res) => {
 
 
 app.delete('/:id', (req, res) => {
-  BlogPosts
+  BlogPost
     .findByIdAndRemove(req.params.id)
     .exec()
     .then(() => {
@@ -110,7 +113,9 @@ app.delete('/:id', (req, res) => {
       res.status(204).end();
     });
 });
-
+////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////       Users               ///////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////
 app.post('/users', (req, res) => {
   const requiredFields= ['username','password'];
   if(!req.body){
@@ -161,7 +166,45 @@ app.post('/users', (req, res) => {
 
 });
 
+const basicStrategy = new BasicStrategy(function(username,password,callback){
+  let user;
+  return User
+  .findOne({username})
+  .exec()
+  .then(function(result){
+    if(!result){
+      return callback(null,false,{message:'Incorrect username or password'});
+    }
+    console.log('result',result);
+    user = result;
+    return user.validatePassword(password);
+  })
+  .then(function(isValid){
+    if(!isValid){
+      return callback(null,false,{message:'Incorrect username or password'});
+    }
+    return callback(null,user);
+  });
+});
 
+passport.use(basicStrategy);
+app.use(passport.initialize());
+
+app.get('/users/me',passport.authenticate('basic',{session:false}),(req,res)=>{
+  res.json({user: req.user.apiRepr()});
+});
+app.get('/users', (req, res) => {
+  User
+    .find()
+    .exec()
+    .then(users => {
+      res.json(users.map(user => user.apiRepr()));
+    })
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({error: 'something went terribly wrong'});
+    });
+});
 app.use('*', function(req, res) {
   res.status(404).json({message: 'Not Found'});
 });
